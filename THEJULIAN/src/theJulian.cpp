@@ -27,45 +27,45 @@ void setup() {
  }
     Serial.printf("\n\n");
 
-  Serial.printf("Start initialization/n");
+  Serial1.println("Start initialization");
   while (hu.begin() != 0) {
-    Serial.printf("init error!!!/n");
+    Serial1.println("init error!!!");
     delay(1000);
   }
-  Serial.printf("Initialization successful/n");
+  Serial.println("Initialization successful");
 
-  Serial.printf("Start switching work mode/n");
+  Serial.println("Start switching work mode");
   while (hu.configWorkMode(hu.eSleepMode) != 0) {
-    Serial.printf("error!!!\n");
+    Serial.println("error!!!");
     delay(1000);
   }
-  Serial.printf("Work mode switch successful\n");
+  Serial.println("Work mode switch successful");
 
-  Serial.printf("Current work mode:\n");
+  Serial.print("Current work mode:");
   switch (hu.getWorkMode()) {
     case 1:
-      Serial.printf("Fall detection mode\n");
+      Serial.println("Fall detection mode");
       break;
     case 2:
-      Serial.printf("Sleep detection mode\n");
+      Serial.println("Sleep detection mode");
       break;
     default:
-      Serial.printf("Read error\n");
+      Serial.println("Read error");
   }
 
   hu.configLEDLight(hu.eHPLed, 1);  // Set HP LED switch, it will not light up even if the sensor detects a person when set to 0.
   hu.sensorRet();                   // Module reset, must perform sensorRet after setting data, otherwise the sensor may not be usable
 
-  Serial.printf("HP LED status: \n");
+  Serial.print("HP LED status:");
   switch (hu.getLEDLightState(hu.eHPLed)) {
     case 0:
-      Serial.printf("Off\n");
+      Serial.println("Off");
       break;
     case 1:
-      Serial.printf("On\n");
+      Serial.println("On");
       break;
     default:
-      Serial.printf("Read error\n");
+      Serial.println("Read error");
   }
 
   Serial.println();
@@ -73,34 +73,34 @@ void setup() {
 }
 
 void loop() {
-  Serial.printf("Existing information: \n");
+  Serial.print("Existing information:");
   switch (hu.smHumanData(hu.eHumanPresence)) {
     case 0:
-      Serial.printf("No one is present\n");
+      Serial.println("No one is present");
       break;
     case 1:
-      Serial.printf("Someone is present\n");
+      Serial.println("Someone is present");
       break;
     default:
-      Serial.printf("Read error\n");
+      Serial.println("Read error");
   }
 
-  Serial.printf("Motion information: \n");
+  Serial.print("Motion information:");
   switch (hu.smHumanData(hu.eHumanMovement)) {
     case 0:
-      Serial.printf("None\n");
+      Serial.println("None");
       break;
     case 1:
-      Serial.printf("Still\n");
+      Serial.println("Still");
       break;
     case 2:
-      Serial.printf("Active\n");
+      Serial.println("Active");
       break;
     default:
-      Serial.printf("Read error\n");
+      Serial.println("Read error");
   }
 
-  Serial.print("Body movement parameters: \n");
+  Serial.print("Body movement parameters: ");
   Serial.println(hu.smHumanData(hu.eHumanMovingRange));
   Serial.print("Respiration rate: ");
   Serial.println(hu.getBreatheValue());
