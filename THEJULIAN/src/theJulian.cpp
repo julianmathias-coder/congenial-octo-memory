@@ -1,6 +1,7 @@
 /* 
  * Project: finalIoT
  * Author: Julian Mathias
+ * Questions: Pointer are used to declare rx/tx pins. Also not sure what hu(&serial1) means vs serial1?
  * Date: 12-01-24
  * For comprehensive documentation and examples, please visit:
  * https://docs.particle.io/firmware/best-practices/firmware-template/
