@@ -443,6 +443,8 @@ public:
      */
     uint8_t dmFallConfig(eDmFallConfig con, uint32_t data);
 
+   // uint8_t getData(uint8_t con, uint8_t cmd, uint16_t len, uint8_t *senData, uint8_t *retData);
+
 private:
     /**
      * @fn getData

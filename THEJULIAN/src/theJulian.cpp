@@ -15,6 +15,9 @@
 #include <Adafruit_MQTT.h>
 #include "Adafruit_MQTT/Adafruit_MQTT_SPARK.h"
 #include "Adafruit_MQTT/Adafruit_MQTT.h"
+#include <neopixel.h>
+#include "colors.h"
+#include "Adafruit_SSD1306.h"
 #include "credentials.h"
 
 /************ Global State (you don't need to change this!) ******************/ 
@@ -31,9 +34,20 @@ Adafruit_MQTT_Publish mmwave = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds
 void MQTT_connect();
 bool MQTT_ping();
 
-unsigned int last,lastTime;
+unsigned int last,lastTime, currentTime, lastSecond;
+int pixelNumber;
+const int PIXELCOUNT = 30; 
+int color;
+int movementPixel;
+
+Adafruit_NeoPixel pixel(PIXELCOUNT, SPI1, WS2812B);  //SPI1 is D2 pin, PIXELCOUNT is totoal pixels.
+
+void PixelFill (int startP, int endP, int color);  //Where to start and end lighting up the pixels and the color. That's IT! The number of pixels is used in the line above! The end pixel is where we stop filling pixels based on what we want lighted up, not the total number of pixels.
 
 DFRobot_HumanDetection hu(&Serial1);
+
+const int OLED_RESET=-1;
+Adafruit_SSD1306 display(OLED_RESET);
 
 
 
@@ -44,9 +58,19 @@ void setup() {
   waitFor(Serial.isConnected, 10000);
   Serial1.begin(115200);
 
-   WiFi.on();
-   WiFi.connect();
-   while (WiFi.connecting()) {
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3C); //0x3c confirmed I2C address in scan
+  display.display(); // show splashscreen
+  delay(2000);
+  display.clearDisplay();   // clears the screen and buffer
+
+  pixel.begin();
+  pixel.setBrightness(30);
+  pixel.show();  //initialize all pixels to off
+
+
+  WiFi.on();
+  WiFi.connect();
+  while (WiFi.connecting()) {
     Serial.printf(".");
  }
     Serial.printf("\n\n");
@@ -135,7 +159,34 @@ void loop() {
   Serial.print("Heart rate: ");
   Serial.println(hu.getHeartRate());
   Serial.println("-----------------------");
-  delay(1000);
+  //delay(1000);
+
+    // uint8_t readBuf[15];
+    // uint8_t data = 0x0f;
+    // uint16_t x,y;
+    // if (hu.getData(0x83, 0x92, 1, &data, readBuf) == 0) {
+    //     x = readBuf[6] << 8 | readBuf[7];
+    //     y = readBuf[8] << 8 | readBuf[9];
+    //     Serial.printf ("X axis: %i\n Y axis: %i\n", x,y);
+    // }
+     
+     movementPixel=(hu.smHumanData(hu.eHumanMovingRange));
+     pixel.clear();
+     PixelFill(0,movementPixel,color);
+    
+
+    currentTime=millis();
+  if ((currentTime-lastSecond)>500) { //half second
+    lastSecond=millis ();
+// Set OLED text size and color
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(0,0);
+  //display.setRotation(3);
+  display.printf("Movement: %i\n", (hu.smHumanData(hu.eHumanMovingRange)));
+  display.display();
+  }
 
 if((millis() - lastTime > 1000)) {  //Need to not overload Adafruit Dashboard
     mmwave.publish((hu.smHumanData(hu.eHumanMovingRange))); //excluding time between pulses to simplify
@@ -144,6 +195,16 @@ if((millis() - lastTime > 1000)) {  //Need to not overload Adafruit Dashboard
     lastTime = millis(); // updated LastTime after publishing to Adafruit
   }
 
+//movementPixel=map((hu.smHumanData(hu.eHumanMovingRange)),0,100,0,10);
+//movementPixel=(1/10)*(hu.smHumanData(hu.eHumanMovingRange));
+void PixelFill (int startP, int endP, int color) {  //make general for the function
+  //for (int pixelNumber=startP; pixelNumber<=endP; pixelNumber++) { 
+  for (int movementPixel=startP; movementPixel<=endP; movementPixel++) {
+  //pixel.setPixelColor (pixelNumber, rainbow[pixelNumber%7]); //Moving through the array of 7 and then starting over at the first color
+  pixel.setPixelColor (movementPixel, rainbow[movementPixel%7]);
+}
+  pixel.show();
+}
 
 void MQTT_connect() {
   int8_t ret;
@@ -179,3 +240,4 @@ bool MQTT_ping() {
   }
   return pingStatus;
 }
+
