@@ -38,7 +38,7 @@ unsigned int last,lastTime, currentTime, lastSecond;
 int pixelNumber;
 const int PIXELCOUNT = 30; 
 int color;
-int movementPixel;
+float movementPixel;
 
 Adafruit_NeoPixel pixel(PIXELCOUNT, SPI1, WS2812B);  //SPI1 is D2 pin, PIXELCOUNT is totoal pixels.
 
@@ -170,9 +170,11 @@ void loop() {
     //     Serial.printf ("X axis: %i\n Y axis: %i\n", x,y);
     // }
      
-     movementPixel=(hu.smHumanData(hu.eHumanMovingRange));
+     float movementPixel=((hu.smHumanData(hu.eHumanMovingRange))-2.0);
+     if (movementPixel !=movementPixel) {
      pixel.clear();
      PixelFill(0,movementPixel,color);
+     }
     
 
     currentTime=millis();
