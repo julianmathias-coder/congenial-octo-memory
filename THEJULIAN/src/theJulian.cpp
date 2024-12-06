@@ -9,6 +9,7 @@
 
 // Include Particle Device OS APIs
 #include "Particle.h"
+#include "IoTClassroom_CNM.h"
 #include "DFRobot_HumanDetection.h"
 #include "stdio.h"
 #include "application.h"
@@ -18,6 +19,8 @@
 #include <neopixel.h>
 #include "colors.h"
 #include "Adafruit_SSD1306.h"
+#include <DFRobot_PN532.h>
+#include "DFRobotDFPlayerMini.h"
 #include "credentials.h"
 
 /************ Global State (you don't need to change this!) ******************/ 
@@ -38,7 +41,21 @@ unsigned int last,lastTime, currentTime, lastSecond;
 int pixelNumber;
 const int PIXELCOUNT = 30; 
 int color;
-float movementPixel;
+int movementPixel;
+
+void displayNFCData();
+bool nfcScanned = false;
+
+#define PN532_IRQ 2
+#define POLLING 0
+#define READ_BLOCK_NO 2
+
+DFRobot_PN532_IIC nfc(PN532_IRQ, POLLING);
+uint8_t dataRead[16] = {0};
+
+DFRobotDFPlayerMini myDFPlayer;
+void printDetail(uint8_t type, int value);
+ 
 
 Adafruit_NeoPixel pixel(PIXELCOUNT, SPI1, WS2812B);  //SPI1 is D2 pin, PIXELCOUNT is totoal pixels.
 
@@ -74,6 +91,7 @@ void setup() {
     Serial.printf(".");
  }
     Serial.printf("\n\n");
+
 
   Serial1.println("Start initialization");
   while (hu.begin() != 0) {
@@ -170,11 +188,11 @@ void loop() {
     //     Serial.printf ("X axis: %i\n Y axis: %i\n", x,y);
     // }
      
-     float movementPixel=((hu.smHumanData(hu.eHumanMovingRange))-2.0);
-     if (movementPixel !=movementPixel) {
-     pixel.clear();
+     movementPixel=(hu.smHumanData(hu.eHumanMovingRange));
+     //if (movementPixel !=movementPixel)
+     //pixel.clear();
      PixelFill(0,movementPixel,color);
-     }
+    
     
 
     currentTime=millis();
@@ -205,6 +223,7 @@ void PixelFill (int startP, int endP, int color) {  //make general for the funct
   //pixel.setPixelColor (pixelNumber, rainbow[pixelNumber%7]); //Moving through the array of 7 and then starting over at the first color
   pixel.setPixelColor (movementPixel, rainbow[movementPixel%7]);
 }
+  pixel.clear();
   pixel.show();
 }
 

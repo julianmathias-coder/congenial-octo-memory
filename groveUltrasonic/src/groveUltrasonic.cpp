@@ -30,8 +30,8 @@ void loop() {
   Serial.printf("Distance is %li inch\n",RangeInInches);  //0-157 inches
   delay(250);
 
- RangeInCentimeters = ultrasonic.MeasureInCentimeters(); // two measurements should keep an interval
- Serial.printf("Distance is %li cm\n",RangeInCentimeters);//0~400cm
- delay(250);
+ //RangeInCentimeters = ultrasonic.MeasureInCentimeters(); // two measurements should keep an interval
+ //Serial.printf("Distance is %li cm\n",RangeInCentimeters);//0~400cm
+ //delay(250);
 
 }
