@@ -9,7 +9,10 @@
 #include "Particle.h"
 
 // Define serial communication parameters
-#define BAUD_RATE 115200
+//#define BAUD_RATE 115200
+
+// Define buffer size
+#define BUFFER_SIZE 12
 
 // Function to calculate checksum
 uint8_t calculateChecksum(uint8_t *frame, size_t length) {
@@ -20,10 +23,13 @@ uint8_t calculateChecksum(uint8_t *frame, size_t length) {
     return static_cast<uint8_t>(sum & 0xFF); // Take lower 8 bits
 }
 
+SYSTEM_MODE(MANUAL);
+
 void setup() {
     // Initialize Serial for debugging and Serial1 for sensor communication
     Serial.begin(9600); // USB Debugging
-    Serial3.begin(BAUD_RATE); // UART Communication with Sensor
+    waitFor(Serial.isConnected, 10000);
+    Serial3.begin(115200); // UART Communication with Sensor
 
     // Wait for serial connection
     while (!Serial) {
@@ -39,17 +45,20 @@ void setup() {
                        command[4], command[5], checksum, 0x54, 0x43};
 
     // Send command to sensor
-    Serial1.write(frame, sizeof(frame));
+    Serial3.write(frame, sizeof(frame));
     Serial.println("Command sent to enable Human Position Active Reporting.");
 }
 
 void loop() {
+    // Define a buffer to store response data
+    uint8_t response[BUFFER_SIZE];
+
     // Check if data is available from the sensor
     if (Serial3.available()) {
-        uint8_t response[12]; // Example response length for position data
-        size_t bytesRead = Serial3.readBytes(response, sizeof(response));
+        // Read data into the buffer (cast response to char*)
+        size_t bytesRead = Serial3.readBytes((char *)response, sizeof(response));
 
-        if (bytesRead >= 12 && response[2] == 0x80 && response[3] == 0x05) {
+        if (bytesRead >= BUFFER_SIZE && response[2] == 0x80 && response[3] == 0x05) {
             // Parse x, y, z coordinates from response data
             int16_t x = (response[6] << 8) | response[7];
             int16_t y = (response[8] << 8) | response[9];
