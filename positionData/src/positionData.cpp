@@ -10,7 +10,7 @@
 
 // Define serial communication parameters
 #define BAUD_RATE 115200
-#define BUFFER_SIZE 12
+#define BUFFER_SIZE 32 // Larger buffer to handle partial frames
 
 // Function to calculate checksum
 uint8_t calculateChecksum(uint8_t *frame, size_t length) {
@@ -21,59 +21,75 @@ uint8_t calculateChecksum(uint8_t *frame, size_t length) {
     return static_cast<uint8_t>(sum & 0xFF); // Take lower 8 bits
 }
 
+// Function to parse a valid frame
+void parseFrame(uint8_t *frame, size_t length) {
+    if (length < 12) { // Minimum frame size for human position reporting
+        Serial.println("Frame too short");
+        return;
+    }
+
+    // Validate checksum
+    uint8_t calculatedChecksum = calculateChecksum(frame + 2, length - 5); // Exclude header and tail
+    uint8_t receivedChecksum = frame[length - 3]; // Checksum is before tail
+
+    if (calculatedChecksum != receivedChecksum) {
+        Serial.printf("Invalid checksum. Calculated: %02X, Received: %02X\n", calculatedChecksum, receivedChecksum);
+        return;
+    }
+
+    // Parse control word and command word
+    uint8_t controlWord = frame[2];
+    uint8_t commandWord = frame[3];
+
+    if (controlWord == 0x80 && commandWord == 0x05) { // Example: Human Position Active Reporting
+        int16_t x = (frame[6] << 8) | frame[7];
+        int16_t y = (frame[8] << 8) | frame[9];
+        int16_t z = (frame[10] << 8) | frame[11];
+
+        Serial.printf("Human Position: X=%d cm, Y=%d cm, Z=%d cm\n", x, y, z);
+    } else {
+        Serial.println("Unknown control/command word");
+    }
+}
+
 SYSTEM_MODE(MANUAL);
 
 void setup() {
-    // Initialize Serial for debugging and Serial3 for sensor communication
     Serial.begin(9600);
     waitFor(Serial.isConnected, 10000);
     Serial3.begin(BAUD_RATE);
 
-    // Wait for serial connection
-    while (!Serial) {
-        delay(100);
-    }
-
-    // Construct command frame for enabling Human Position Active Reporting
-    uint8_t command[] = {0x53, 0x59, 0x80, 0x05, 0x00, 0x06};
-    uint8_t checksum = calculateChecksum(command, sizeof(command));
-    
-    // Append checksum and frame tail
-    uint8_t frame[] = {command[0], command[1], command[2], command[3], 
-                       command[4], command[5], checksum, 0x54, 0x43};
-
-    // Debug: Print sent frame
-    Serial.print("Sent: ");
-    for (int i = 0; i < sizeof(frame); i++) {
-        Serial.printf("%02X ", frame[i]);
-    }
-    Serial.println();
-
-    // Send command to sensor
-    Serial3.write(frame, sizeof(frame));
+    Serial.println("C1001 mmWave Sensor Initialized");
 }
 
 void loop() {
-    uint8_t response[BUFFER_SIZE];
+    static uint8_t buffer[BUFFER_SIZE];
+    static size_t bufferIndex = 0;
 
-    if (Serial3.available()) {
-        size_t bytesRead = Serial3.readBytes((char *)response, sizeof(response));
+    while (Serial3.available()) {
+        uint8_t byte = Serial3.read();
 
-        // Debug: Print received response
-        Serial.print("Received: ");
-        for (int i = 0; i < bytesRead; i++) {
-            Serial.printf("%02X ", response[i]);
+        // Add byte to buffer
+        buffer[bufferIndex++] = byte;
+
+        // Check for valid frame header
+        if (bufferIndex >= 2 && buffer[bufferIndex - 2] == 0x53 && buffer[bufferIndex - 1] == 0x59) {
+            // Check if we have enough bytes for a complete frame
+            if (bufferIndex >= BUFFER_SIZE || 
+                (bufferIndex >= BUFFER_SIZE && buffer[BUFFER_SIZE - 2] == 0x54 && buffer[BUFFER_SIZE - 1] == 0x43)) {
+
+                // Parse the frame
+                parseFrame(buffer, bufferIndex);
+
+                // Reset the buffer index for the next frame
+                bufferIndex = 0;
+            }
         }
-        Serial.println();
 
-        if (bytesRead >= BUFFER_SIZE && response[2] == 0x80 && response[3] == 0x05) {
-            int16_t x = (response[6] << 8) | response[7];
-            int16_t y = (response[8] << 8) | response[9];
-            int16_t z = (response[10] << 8) | response[11];
-
-            Serial.printf("Human Position: X=%d cm, Y=%d cm, Z=%d cm\n", x, y, z);
-        } else {
-            Serial.println("Invalid or unexpected response received.");
+        // Prevent overflow in case of invalid data stream
+        if (bufferIndex >= BUFFER_SIZE) {
+            Serial.println("Buffer overflow. Resetting.");
+            bufferIndex = 0;
         }
     }
 
