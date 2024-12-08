@@ -24,7 +24,7 @@ uint8_t calculateChecksum(uint8_t *frame, size_t length) {
 }
 
 void parseFrame(uint8_t *frame, size_t length) {
-    if (length < 9) { // Minimum frame size: Header (2) + Control (1) + Command (1) + Length (2) + Checksum (1) + Tail (2)
+    if (length < 9) { // Minimum frame size
         Serial.println("Frame too short");
         return;
     }
@@ -46,6 +46,8 @@ void parseFrame(uint8_t *frame, size_t length) {
     Serial.println("Valid frame received");
     // Process Data based on Control Word and Command Word
 }
+
+SYSTEM_MODE(MANUAL);
 
 void setup() {
     Serial.begin(9600);
@@ -76,7 +78,7 @@ void loop() {
             bufferIndex = 0; // Reset buffer after processing
         }
     }
-
+delay (3000);
    //Print raw data from the sensor in hexadecimal format for debugging: 
     Serial.print("Received: ");
 for (size_t i = 0; i < bufferIndex; i++) {
