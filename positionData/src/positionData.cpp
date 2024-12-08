@@ -6,11 +6,12 @@
  * https://docs.particle.io/firmware/best-practices/firmware-template/
  */
 
+
 #include "Particle.h"
 
 // Define serial communication parameters
 #define BAUD_RATE 115200
-#define BUFFER_SIZE 32 // Larger buffer to handle partial frames
+#define BUFFER_SIZE 32 // Adjust based on maximum frame size
 
 // Function to calculate checksum
 uint8_t calculateChecksum(uint8_t *frame, size_t length) {
@@ -23,7 +24,7 @@ uint8_t calculateChecksum(uint8_t *frame, size_t length) {
 
 // Function to parse a valid frame
 void parseFrame(uint8_t *frame, size_t length) {
-    if (length < 12) { // Minimum frame size for human position reporting
+    if (length < 7) { // Minimum frame size: Header (2) + Control (1) + Command (1) + Length (2) + Checksum (1)
         Serial.println("Frame too short");
         return;
     }
@@ -54,6 +55,7 @@ void parseFrame(uint8_t *frame, size_t length) {
 
 SYSTEM_MODE(MANUAL);
 
+
 void setup() {
     Serial.begin(9600);
     waitFor(Serial.isConnected, 10000);
@@ -73,7 +75,7 @@ void loop() {
         buffer[bufferIndex++] = byte;
 
         // Check for valid frame header
-        if (bufferIndex >= 2 && buffer[bufferIndex - 2] == 0x53 && buffer[bufferIndex - 1] == 0x59) {
+        if (bufferIndex >= 2 && buffer[0] == 0x53 && buffer[1] == 0x59) {
             // Check if we have enough bytes for a complete frame
             if (bufferIndex >= BUFFER_SIZE || 
                 (bufferIndex >= BUFFER_SIZE && buffer[BUFFER_SIZE - 2] == 0x54 && buffer[BUFFER_SIZE - 1] == 0x43)) {
@@ -91,6 +93,13 @@ void loop() {
             Serial.println("Buffer overflow. Resetting.");
             bufferIndex = 0;
         }
+   //Print raw data from the sensor in hexadecimal format for debugging: 
+    Serial.print("Received: ");
+for (size_t i = 0; i < bufferIndex; i++) {
+    Serial.printf("%02X ", buffer[i]);
+}
+Serial.println();
+    
     }
 
     delay(100); // Avoid flooding serial communication
