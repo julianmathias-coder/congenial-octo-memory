@@ -9,9 +9,7 @@
 #include "Particle.h"
 
 // Define serial communication parameters
-//#define BAUD_RATE 115200
-
-// Define buffer size
+#define BAUD_RATE 115200
 #define BUFFER_SIZE 12
 
 // Function to calculate checksum
@@ -26,10 +24,10 @@ uint8_t calculateChecksum(uint8_t *frame, size_t length) {
 SYSTEM_MODE(MANUAL);
 
 void setup() {
-    // Initialize Serial for debugging and Serial1 for sensor communication
-    Serial.begin(9600); // USB Debugging
+    // Initialize Serial for debugging and Serial3 for sensor communication
+    Serial.begin(9600);
     waitFor(Serial.isConnected, 10000);
-    Serial3.begin(115200); // UART Communication with Sensor
+    Serial3.begin(BAUD_RATE);
 
     // Wait for serial connection
     while (!Serial) {
@@ -44,32 +42,40 @@ void setup() {
     uint8_t frame[] = {command[0], command[1], command[2], command[3], 
                        command[4], command[5], checksum, 0x54, 0x43};
 
+    // Debug: Print sent frame
+    Serial.print("Sent: ");
+    for (int i = 0; i < sizeof(frame); i++) {
+        Serial.printf("%02X ", frame[i]);
+    }
+    Serial.println();
+
     // Send command to sensor
     Serial3.write(frame, sizeof(frame));
-    Serial.println("Command sent to enable Human Position Active Reporting.");
 }
 
 void loop() {
-    // Define a buffer to store response data
     uint8_t response[BUFFER_SIZE];
 
-    // Check if data is available from the sensor
     if (Serial3.available()) {
-        // Read data into the buffer (cast response to char*)
         size_t bytesRead = Serial3.readBytes((char *)response, sizeof(response));
 
+        // Debug: Print received response
+        Serial.print("Received: ");
+        for (int i = 0; i < bytesRead; i++) {
+            Serial.printf("%02X ", response[i]);
+        }
+        Serial.println();
+
         if (bytesRead >= BUFFER_SIZE && response[2] == 0x80 && response[3] == 0x05) {
-            // Parse x, y, z coordinates from response data
             int16_t x = (response[6] << 8) | response[7];
             int16_t y = (response[8] << 8) | response[9];
             int16_t z = (response[10] << 8) | response[11];
 
-            // Print human position data to serial monitor
             Serial.printf("Human Position: X=%d cm, Y=%d cm, Z=%d cm\n", x, y, z);
         } else {
             Serial.println("Invalid or unexpected response received.");
         }
     }
 
-    delay(100); // Add a small delay to avoid flooding the serial communication
+    delay(100); // Avoid flooding serial communication
 }
