@@ -61,7 +61,7 @@ Adafruit_NeoPixel pixel(PIXELCOUNT, SPI1, WS2812B);  //SPI1 is D2 pin, PIXELCOUN
 
 void PixelFill (int startP, int endP, int color);  //Where to start and end lighting up the pixels and the color. That's IT! The number of pixels is used in the line above! The end pixel is where we stop filling pixels based on what we want lighted up, not the total number of pixels.
 
-DFRobot_HumanDetection hu(&Serial1);
+DFRobot_HumanDetection hu(&Serial3);
 
 const int OLED_RESET=-1;
 Adafruit_SSD1306 display(OLED_RESET);
@@ -73,7 +73,17 @@ SYSTEM_MODE(AUTOMATIC);
 void setup() {
   Serial.begin(9600);
   waitFor(Serial.isConnected, 10000);
-  Serial1.begin(115200);
+  Serial1.begin(9200);
+  Serial3.begin(115200);
+ 
+
+  myDFPlayer.begin(Serial1);
+
+  while (!nfc.begin()) {
+  Serial.printf("NFC initialization failed. Retrying...\n");
+  delay(1000);
+  }
+  Serial.printf("NFC initialized. Waiting for a card...\n");
 
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C); //0x3c confirmed I2C address in scan
   display.display(); // show splashscreen
@@ -93,9 +103,9 @@ void setup() {
     Serial.printf("\n\n");
 
 
-  Serial1.println("Start initialization");
+  Serial.println("Start initialization");
   while (hu.begin() != 0) {
-    Serial1.println("init error!!!");
+    Serial.println("init error!!!");
     delay(1000);
   }
   Serial.println("Initialization successful");
@@ -190,10 +200,32 @@ void loop() {
      
      movementPixel=(hu.smHumanData(hu.eHumanMovingRange));
      //if (movementPixel !=movementPixel)
-     //pixel.clear();
+     pixel.clear();
      PixelFill(0,movementPixel,color);
     
-    
+  static unsigned long lastNfcScanTime = 0;
+  unsigned long currentTime = millis();
+
+  if (currentTime - lastNfcScanTime >= 100) { // 100ms delay between scans to reduce power consumption
+    lastNfcScanTime = currentTime; 
+  
+  if (nfc.scan()) {
+    nfcScanned = true; // Set NFC scan flag
+    (hu.begin());
+    (hu.configWorkMode(hu.eFallingMode));
+
+    //myDFPlayer.volume(0); // Mute the player when NFC is scanned
+ 
+  if (nfc.readData(dataRead, READ_BLOCK_NO) == 1) {
+    Serial.printf("Block %d read success!\n", READ_BLOCK_NO);
+    Serial.printf("Data read (string): %s\n", (char *)dataRead);
+    displayNFCData();
+  } 
+  else {
+    Serial.printf("Block %d read failure!\n", READ_BLOCK_NO);
+    }
+   }
+  }
 
     currentTime=millis();
   if ((currentTime-lastSecond)>500) { //half second
@@ -223,9 +255,17 @@ void PixelFill (int startP, int endP, int color) {  //make general for the funct
   //pixel.setPixelColor (pixelNumber, rainbow[pixelNumber%7]); //Moving through the array of 7 and then starting over at the first color
   pixel.setPixelColor (movementPixel, rainbow[movementPixel%7]);
 }
-  pixel.clear();
+  //pixel.clear();
   pixel.show();
 }
+
+void displayNFCData() {
+  display.clearDisplay();
+  display.setTextSize(2);
+  display.setCursor(0, 32);
+  display.printf("%s\n", (char *)dataRead);
+  display.display(); 
+  }
 
 void MQTT_connect() {
   int8_t ret;
