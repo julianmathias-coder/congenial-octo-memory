@@ -78,7 +78,17 @@ void loop() {
         if (bufferIndex >= 2 && buffer[0] == 0x53 && buffer[1] == 0x59) {
             // Check if we have enough bytes for a complete frame
             if (bufferIndex >= BUFFER_SIZE || 
-                (bufferIndex >= BUFFER_SIZE && buffer[BUFFER_SIZE - 2] == 0x54 && buffer[BUFFER_SIZE - 1] == 0x43)) {
+                (bufferIndex >= 2 && buffer[BUFFER_SIZE - 2] == 0x54 && buffer[BUFFER_SIZE - 1] == 0x43)) {
+
+
+    delay(100); // Avoid flooding serial communication
+  //Print raw data from the sensor in hexadecimal format for debugging: 
+    Serial.print("Received: ");
+for (size_t i = 0; i < bufferIndex; i++) {
+    Serial.printf("%02X ", buffer[i]);
+}
+Serial.println();
+
 
                 // Parse the frame
                 parseFrame(buffer, bufferIndex);
@@ -95,12 +105,4 @@ void loop() {
         }
 
     }
-
-    delay(100); // Avoid flooding serial communication
-  //Print raw data from the sensor in hexadecimal format for debugging: 
-    Serial.print("Received: ");
-for (size_t i = 0; i < bufferIndex; i++) {
-    Serial.printf("%02X ", buffer[i]);
-}
-Serial.println();
 }
