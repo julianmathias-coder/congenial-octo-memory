@@ -8,15 +8,16 @@
 
 #include "Particle.h"
 #include "DFRobot_HumanDetection.h"
-#include "DFRobot_PN532_IIC.h"
+#include <DFRobot_PN532.h>
 
-#define STATE_ADDRESS 0
+#define STATE_ADDRESS 0x00
 #define PN532_IRQ 2
 #define POLLING 0
 #define READ_BLOCK_NO 2
 
 DFRobot_HumanDetection hu(&Serial3);
 DFRobot_PN532_IIC nfc(PN532_IRQ, POLLING);
+uint8_t dataRead[16] = {0};
 
 enum SensorState {
     SLEEP_MODE,
@@ -24,13 +25,13 @@ enum SensorState {
 };
 
 void saveState(SensorState state) {
-    EEPROM.put(STATE_ADDRESS, state);
+    EEPROM.write(STATE_ADDRESS, state);
     Serial.printf("State saved: %d\n", state);
 }
 
 SensorState loadState() {
     SensorState state;
-    EEPROM.get(STATE_ADDRESS, state);
+    state = EEPROM.read(STATE_ADDRESS);
     
     if (state != SLEEP_MODE && state != FALL_MODE) {
         state = SLEEP_MODE; // Default to SLEEP_MODE if invalid
@@ -40,10 +41,12 @@ SensorState loadState() {
     return state;
 }
 
+SYSTEM_MODE(MANUAL);
+
 void setup() {
     Serial.begin(9600);
     waitFor(Serial.isConnected,10000);
-    Serial3.begin(11200);
+    Serial3.begin(115200);
 
     
     // Initialize NFC module
@@ -76,6 +79,20 @@ void setup() {
 }
 
 void loop() {
+    
+    //Write data to card
+    uint8_t blockNumber = 2; //writing to block 2
+    uint8_t dataToWrite[] = "FALL";
+    if (nfc.writeData(blockNumber, dataToWrite)) {
+        Serial.printf ("Data written successfully: %s\n", (char *)dataRead);
+    }
+    else {
+        Serial.printf("Failed to write");
+    }
+    
+    
+    
+    
     static unsigned long lastNfcScanTime = 0;
     
     if (millis() - lastNfcScanTime >= 100) { // Check NFC every 100ms

@@ -91,7 +91,7 @@ void setup() {
   display.clearDisplay();   // clears the screen and buffer
 
   pixel.begin();
-  pixel.setBrightness(30);
+  pixel.setBrightness(255);
   pixel.show();  //initialize all pixels to off
 
 
