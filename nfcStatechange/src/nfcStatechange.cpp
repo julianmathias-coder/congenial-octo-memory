@@ -83,14 +83,14 @@ void setup() {
 void loop() {
     
     //Write data to card
-    uint8_t blockNumber = 2; //writing to block 2
-    uint8_t dataToWrite[] = "FALL";
-    if (nfc.writeData(blockNumber, dataToWrite)) {
-        Serial.printf ("Data written successfully: %s\n", (char *)dataRead);
-    }
-    else {
-        Serial.printf("Failed to write");
-    }
+    // uint8_t blockNumber = 2; //writing to block 2
+    // uint8_t dataToWrite[] = "FALL";
+    // if (nfc.writeData(blockNumber, dataToWrite)) {
+    //     Serial.printf ("Data written successfully: %s\n", (char *)dataRead);
+    // }
+    // else {
+    //     Serial.printf("Failed to write");
+    // }
     
     
     
