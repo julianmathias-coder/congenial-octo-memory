@@ -34,8 +34,8 @@ Adafruit_MQTT_SPARK mqtt(&TheClient,AIO_SERVER,AIO_SERVERPORT,AIO_USERNAME,AIO_K
 // Notice MQTT paths for AIO follow the form: <username>/feeds/<feedname>//must include /feeds/ before the feedname!
 Adafruit_MQTT_Publish mmwave = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/mmwave");
 
-void MQTT_connect();
-bool MQTT_ping();
+// void MQTT_connect();
+// bool MQTT_ping();
 
 unsigned int last,lastTime, currentTime, lastSecond;
 int pixelNumber;
@@ -68,7 +68,7 @@ Adafruit_SSD1306 display(OLED_RESET);
 
 
 
-SYSTEM_MODE(AUTOMATIC);
+SYSTEM_MODE(MANUAL);
 
 void setup() {
   Serial.begin(9600);
@@ -95,12 +95,12 @@ void setup() {
   pixel.show();  //initialize all pixels to off
 
 
-  WiFi.on();
-  WiFi.connect();
-  while (WiFi.connecting()) {
-    Serial.printf(".");
- }
-    Serial.printf("\n\n");
+//   WiFi.on();
+//   WiFi.connect();
+//   while (WiFi.connecting()) {
+//     Serial.printf(".");
+//  }
+//     Serial.printf("\n\n");
 
 
   Serial.println("Start initialization");
@@ -149,8 +149,9 @@ void setup() {
 }
 
 void loop() {
- MQTT_connect();
- MQTT_ping();
+//  MQTT_connect();
+//  MQTT_ping();
+
 
   Serial.print("Existing information:");
   switch (hu.smHumanData(hu.eHumanPresence)) {
@@ -197,35 +198,48 @@ void loop() {
     //     y = readBuf[8] << 8 | readBuf[9];
     //     Serial.printf ("X axis: %i\n Y axis: %i\n", x,y);
     // }
+
+//  SystemSleepConfiguration config;
+//  config.mode(SystemSleepMode::ULTRA_LOW_POWER).gpio (D6,RISING);
+//  SystemSleepResult result  = System.sleep(config);
+//  delay(1000);
+//  if (result.wakeupReason() == SystemSleepWakeupReason::BY_GPIO) {
+//   Serial.printf("Presence Detected  %i\n", result.wakeupPin());
+//  }
      
      movementPixel=(hu.smHumanData(hu.eHumanMovingRange));
      //if (movementPixel !=movementPixel)
      pixel.clear();
      PixelFill(0,movementPixel,color);
     
-  static unsigned long lastNfcScanTime = 0;
-  unsigned long currentTime = millis();
+  // static unsigned long lastNfcScanTime = 0;
+  // unsigned long currentTime = millis();
 
-  if (currentTime - lastNfcScanTime >= 100) { // 100ms delay between scans to reduce power consumption
-    lastNfcScanTime = currentTime; 
+  // if (currentTime - lastNfcScanTime >= 100) { // 100ms delay between scans to reduce power consumption
+  //   lastNfcScanTime = currentTime; 
   
   if (nfc.scan()) {
-    nfcScanned = true; // Set NFC scan flag
-    (hu.begin());
-    (hu.configWorkMode(hu.eFallingMode));
+  nfcScanned = true; // Set NFC scan flag
+    // (hu.begin());
+    // (hu.configWorkMode(hu.eFallingMode));
+
+      myDFPlayer.volume(10); //Set volume to 30 if NFC not scanned
+      myDFPlayer.loop(2); //Loop the first mp3
+
+  }
 
     //myDFPlayer.volume(0); // Mute the player when NFC is scanned
  
-  if (nfc.readData(dataRead, READ_BLOCK_NO) == 1) {
-    Serial.printf("Block %d read success!\n", READ_BLOCK_NO);
-    Serial.printf("Data read (string): %s\n", (char *)dataRead);
-    displayNFCData();
-  } 
-  else {
-    Serial.printf("Block %d read failure!\n", READ_BLOCK_NO);
-    }
-   }
-  }
+  // if (nfc.readData(dataRead, READ_BLOCK_NO) == 1) {
+  //   Serial.printf("Block %d read success!\n", READ_BLOCK_NO);
+  //   Serial.printf("Data read (string): %s\n", (char *)dataRead);
+  //   displayNFCData();
+  // } 
+  // else {
+  //   Serial.printf("Block %d read failure!\n", READ_BLOCK_NO);
+  //   }
+  //  }
+  // }
 
     currentTime=millis();
   if ((currentTime-lastSecond)>500) { //half second
@@ -267,38 +281,38 @@ void displayNFCData() {
   display.display(); 
   }
 
-void MQTT_connect() {
-  int8_t ret;
+// void MQTT_connect() {
+//   int8_t ret;
  
-  // Return if already connected.
-  if (mqtt.connected()) {
-    return;
-  }
+//   // Return if already connected.
+//   if (mqtt.connected()) {
+//     return;
+//   }
  
-  Serial.print("Connecting to MQTT... ");
+//   Serial.print("Connecting to MQTT... ");
  
-  while ((ret = mqtt.connect()) != 0) { // connect will return 0 for connected
-       Serial.printf("Error Code %s\n",mqtt.connectErrorString(ret));
-       Serial.printf("Retrying MQTT connection in 5 seconds...\n");
-       mqtt.disconnect();
-       delay(5000);  // wait 5 seconds and try again
-  }
-  Serial.printf("MQTT Connected!\n");
-}
+//   while ((ret = mqtt.connect()) != 0) { // connect will return 0 for connected
+//        Serial.printf("Error Code %s\n",mqtt.connectErrorString(ret));
+//        Serial.printf("Retrying MQTT connection in 5 seconds...\n");
+//        mqtt.disconnect();
+//        delay(5000);  // wait 5 seconds and try again
+//   }
+//   Serial.printf("MQTT Connected!\n");
+// }
 
-bool MQTT_ping() {
-  static unsigned int last;
-  bool pingStatus;
+// bool MQTT_ping() {
+//   static unsigned int last;
+//   bool pingStatus;
 
-  if ((millis()-last)>120000) {
-      Serial.printf("Pinging MQTT \n");
-      pingStatus = mqtt.ping();
-      if(!pingStatus) {
-        Serial.printf("Disconnecting \n");
-        mqtt.disconnect();
-      }
-      last = millis();
-  }
-  return pingStatus;
-}
+//   if ((millis()-last)>120000) {
+//       Serial.printf("Pinging MQTT \n");
+//       pingStatus = mqtt.ping();
+//       if(!pingStatus) {
+//         Serial.printf("Disconnecting \n");
+//         mqtt.disconnect();
+//       }
+//       last = millis();
+//   }
+//   return pingStatus;
+// }
 

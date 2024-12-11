@@ -30,10 +30,12 @@ void saveState(SensorState state) {
 }
 
 SensorState loadState() {
-    SensorState state;
-    state = EEPROM.read(STATE_ADDRESS);
+    uint8_t storedValue =EEPROM.read(STATE_ADDRESS);  //read as uint8 
+    SensorState state = static_cast<SensorState>(storedValue); //explicit cast convets integer to sensorstate enum
+    //state = EEPROM.read(STATE_ADDRESS);
     
-    if (state != SLEEP_MODE && state != FALL_MODE) {
+
+    if (state != SLEEP_MODE && state != FALL_MODE) { //Validate state value
         state = SLEEP_MODE; // Default to SLEEP_MODE if invalid
     }
 
