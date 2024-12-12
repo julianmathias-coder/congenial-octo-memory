@@ -39,7 +39,7 @@ bool MQTT_ping();
 
 unsigned int last,lastTime, currentTime, lastSecond;
 int pixelNumber;
-const int PIXELCOUNT = 30; 
+const int PIXELCOUNT = 16; 
 int color;
 int movementPixel;
 
@@ -105,49 +105,48 @@ void setup() {
     Serial.printf("\n\n");
 
 
-  Serial.printf("Start initialization");
+  Serial.printf("Start initialization\n");
   while (hu.begin() != 0) {
-    Serial.printf("init error!!!");
+    Serial.printf("init error!!!\n");
     delay(1000);
   }
-  Serial.printf("Initialization successful");
+  Serial.printf("Initialization successful\n");
 
   Serial.printf("Start switching work mode");
   while (hu.configWorkMode(hu.eSleepMode) != 0) {
-    Serial.printf("error!!!");
+    Serial.printf("error!!!\n");
     delay(1000);
   }
-  Serial.printf("Work mode switch successful");
+  Serial.printf("Work mode switch successful\n");
 
-  Serial.printf("Current work mode:");
+  Serial.printf("Current work mode:\n");
   switch (hu.getWorkMode()) {
     case 1:
-      Serial.printf("Fall detection mode");
+      Serial.printf("Fall detection mode\n");
       break;
     case 2:
-      Serial.printf("Sleep detection mode");
+      Serial.printf("Sleep detection mode\n");
       break;
     default:
-      Serial.printf("Read error");
+      Serial.printf("Read error\n");
   }
 
   hu.configLEDLight(hu.eHPLed, 1);  // Set HP LED switch, it will not light up even if the sensor detects a person when set to 0.
   hu.sensorRet();                   // Module reset, must perform sensorRet after setting data, otherwise the sensor may not be usable
 
-  Serial.printf("HP LED status:");
+  Serial.printf("HP LED status:\n");
   switch (hu.getLEDLightState(hu.eHPLed)) {
     case 0:
-      Serial.printf("Off");
+      Serial.printf("Off\n");
       break;
     case 1:
-      Serial.printf("On");
+      Serial.printf("On\n");
       break;
     default:
-      Serial.printf("Read error");
+      Serial.printf("Read error\n");
   }
 
-  Serial.println();
-  Serial.println();
+ Serial.printf("---------------\n");
 }
 
 void loop() {
@@ -158,14 +157,14 @@ void loop() {
   Serial.printf("Existing information:");
   switch (hu.smHumanData(hu.eHumanPresence)) {
     case 0:
-      Serial.printf("No one is present");
+      Serial.printf("No one is present\n");
       break;
     case 1:
-      Serial.printf("Someone is present");
+      Serial.printf("Someone is present\n");
       //digitalWrite()
       break;
     default:
-      Serial.println("Read error");
+      Serial.printf("Read error\n");
   }
 
   Serial.printf("Motion information:");
@@ -183,9 +182,7 @@ void loop() {
       Serial.printf("Read error");
   }
 
-  Serial.printf("Body movement parameters:\n",(hu.smHumanData(hu.eHumanMovingRange)));
-  Serial.printf("Respiration rate:\n",(hu.getBreatheValue()));
-  Serial.printf("Heart rate:\n",(hu.getHeartRate()));
+  Serial.printf("Body movement parameters: %i\n Respiration rate: %i\n Heart rate: %i\n",(hu.smHumanData(hu.eHumanMovingRange)),(hu.getBreatheValue()),(hu.getHeartRate()));
   Serial.printf("-----------------------");
   //delay(1000);
 
@@ -218,23 +215,22 @@ void loop() {
     lastNfcScanTime = currentTime;
    
    if (nfc.scan()) {
-     nfcScanned = true; // Set NFC scan flag
-    // (hu.begin());
-    // (hu.configWorkMode(hu.eFallingMode));
-     (nfc.readData(dataRead, READ_BLOCK_NO) == 1);
-     Serial.printf("Block %d read success!\n", READ_BLOCK_NO);
-     Serial.printf("Data read (string): %s\n", (char *)dataRead);
-     displayNFCData();  //This should clear and display scanned NFC characters
-     delay (3000); //testing to see if NFC characteres displayed
-
-    myDFPlayer.volume(10); //Set volume to 30 if NFC not scanned
-    myDFPlayer.loop(1); //Loop the first mp3
-   } 
-   else {
-     Serial.printf("Block %d read failure!\n", READ_BLOCK_NO);
-     }
-   }
-   
+    nfcScanned = true; // Set NFC scan flag
+    if (nfc.readData(dataRead, READ_BLOCK_NO) == 1) {
+        Serial.printf("Block %d read success!\n", READ_BLOCK_NO);
+        Serial.printf("Data read (string): %s\n", (char *)dataRead);
+        displayNFCData(); // Display scanned NFC data
+        myDFPlayer.volume(10); // Set volume
+        myDFPlayer.loop(1); // Loop the first mp3
+    } else {
+        Serial.printf("Block %d read failure!\n", READ_BLOCK_NO); // Print only if read attempt fails
+    }
+} else {
+    if (nfcScanned) { 
+        // Only print failure if we attempted a scan
+        Serial.printf("Block %d read failure!\n", READ_BLOCK_NO);
+    }
+}
 
     currentTime=millis();
   if ((currentTime-lastSecond)>500) { //half second
@@ -245,7 +241,7 @@ void loop() {
   display.setTextColor(WHITE);
   display.setCursor(0,0);
   //display.setRotation(3);
-  display.printf("Movement: %i\n", (hu.smHumanData(hu.eHumanMovingRange)));
+  display.printf("Movement: %i\n Respiratory rate: %i\n Heart Rate: %i\n",(hu.smHumanData(hu.eHumanMovingRange)),(hu.getBreatheValue()),(hu.getHeartRate()));
   display.display();
   }
 
@@ -255,6 +251,7 @@ if((millis() - lastTime > 1000)) {  //Need to not overload Adafruit Dashboard
 }
     lastTime = millis(); // updated LastTime after publishing to Adafruit
   }
+}
 
 //movementPixel=map((hu.smHumanData(hu.eHumanMovingRange)),0,100,0,10);
 //movementPixel=(1/10)*(hu.smHumanData(hu.eHumanMovingRange));
@@ -263,10 +260,11 @@ void PixelFill (int startP, int endP, int color) {  //make general for the funct
   for (int movementPixel=startP; movementPixel<=endP; movementPixel++) {
   //pixel.setPixelColor (pixelNumber, rainbow[pixelNumber%7]); //Moving through the array of 7 and then starting over at the first color
   pixel.setPixelColor (movementPixel, rainbow[movementPixel%7]);
-}
+   }
   //pixel.clear();
   pixel.show();
-}
+  }
+
 
 void displayNFCData() {
   display.clearDisplay();
