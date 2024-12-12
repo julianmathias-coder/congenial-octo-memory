@@ -76,6 +76,8 @@ void setup() {
   Serial1.begin(9200);
   Serial3.begin(115200);
  
+  Serial.printf("DFRobot DFPlayer Mini Demo\n");
+  Serial.printf("Initializing DFPlayer ... (May take 3~5 seconds)\n");
 
   myDFPlayer.begin(Serial1);
 
@@ -103,45 +105,45 @@ void setup() {
     Serial.printf("\n\n");
 
 
-  Serial.println("Start initialization");
+  Serial.printf("Start initialization");
   while (hu.begin() != 0) {
-    Serial.println("init error!!!");
+    Serial.printf("init error!!!");
     delay(1000);
   }
-  Serial.println("Initialization successful");
+  Serial.printf("Initialization successful");
 
-  Serial.println("Start switching work mode");
+  Serial.printf("Start switching work mode");
   while (hu.configWorkMode(hu.eSleepMode) != 0) {
-    Serial.println("error!!!");
+    Serial.printf("error!!!");
     delay(1000);
   }
-  Serial.println("Work mode switch successful");
+  Serial.printf("Work mode switch successful");
 
-  Serial.print("Current work mode:");
+  Serial.printf("Current work mode:");
   switch (hu.getWorkMode()) {
     case 1:
-      Serial.println("Fall detection mode");
+      Serial.printf("Fall detection mode");
       break;
     case 2:
-      Serial.println("Sleep detection mode");
+      Serial.printf("Sleep detection mode");
       break;
     default:
-      Serial.println("Read error");
+      Serial.printf("Read error");
   }
 
   hu.configLEDLight(hu.eHPLed, 1);  // Set HP LED switch, it will not light up even if the sensor detects a person when set to 0.
   hu.sensorRet();                   // Module reset, must perform sensorRet after setting data, otherwise the sensor may not be usable
 
-  Serial.print("HP LED status:");
+  Serial.printf("HP LED status:");
   switch (hu.getLEDLightState(hu.eHPLed)) {
     case 0:
-      Serial.println("Off");
+      Serial.printf("Off");
       break;
     case 1:
-      Serial.println("On");
+      Serial.printf("On");
       break;
     default:
-      Serial.println("Read error");
+      Serial.printf("Read error");
   }
 
   Serial.println();
@@ -153,41 +155,38 @@ void loop() {
   MQTT_ping();
 
 
-  Serial.print("Existing information:");
+  Serial.printf("Existing information:");
   switch (hu.smHumanData(hu.eHumanPresence)) {
     case 0:
-      Serial.println("No one is present");
+      Serial.printf("No one is present");
       break;
     case 1:
-      Serial.println("Someone is present");
+      Serial.printf("Someone is present");
       //digitalWrite()
       break;
     default:
       Serial.println("Read error");
   }
 
-  Serial.print("Motion information:");
+  Serial.printf("Motion information:");
   switch (hu.smHumanData(hu.eHumanMovement)) {
     case 0:
-      Serial.println("None");
+      Serial.printf("None");
       break;
     case 1:
-      Serial.println("Still");
+      Serial.printf("Still");
       break;
     case 2:
-      Serial.println("Active");
+      Serial.printf("Active");
       break;
     default:
-      Serial.println("Read error");
+      Serial.printf("Read error");
   }
 
-  Serial.print("Body movement parameters: ");
-  Serial.println(hu.smHumanData(hu.eHumanMovingRange));
-  Serial.print("Respiration rate: ");
-  Serial.println(hu.getBreatheValue());
-  Serial.print("Heart rate: ");
-  Serial.println(hu.getHeartRate());
-  Serial.println("-----------------------");
+  Serial.printf("Body movement parameters:\n",(hu.smHumanData(hu.eHumanMovingRange)));
+  Serial.printf("Respiration rate:\n",(hu.getBreatheValue()));
+  Serial.printf("Heart rate:\n",(hu.getHeartRate()));
+  Serial.printf("-----------------------");
   //delay(1000);
 
     // uint8_t readBuf[15];
@@ -207,7 +206,7 @@ void loop() {
 //   Serial.printf("Presence Detected  %i\n", result.wakeupPin());
 //  }
      
-     movementPixel=(hu.smHumanData(hu.eHumanMovingRange));
+  movementPixel=(hu.smHumanData(hu.eHumanMovingRange));
      //if (movementPixel !=movementPixel)
      pixel.clear();
      PixelFill(0,movementPixel,color);
@@ -216,24 +215,20 @@ void loop() {
    unsigned long currentTime = millis();
 
    if (currentTime - lastNfcScanTime >= 100) { // 100ms delay between scans to reduce power consumption
-     lastNfcScanTime = currentTime; 
-  
-  if (nfc.scan()) {
-  nfcScanned = true; // Set NFC scan flag
+    lastNfcScanTime = currentTime;
+   
+   if (nfc.scan()) {
+     nfcScanned = true; // Set NFC scan flag
     // (hu.begin());
     // (hu.configWorkMode(hu.eFallingMode));
-
-      myDFPlayer.volume(10); //Set volume to 30 if NFC not scanned
-      myDFPlayer.loop(1); //Loop the first mp3
-
-  }
-
-    //myDFPlayer.volume(0); // Mute the player when NFC is scanned
- 
-   if (nfc.readData(dataRead, READ_BLOCK_NO) == 1) {
+     (nfc.readData(dataRead, READ_BLOCK_NO) == 1);
      Serial.printf("Block %d read success!\n", READ_BLOCK_NO);
      Serial.printf("Data read (string): %s\n", (char *)dataRead);
-     displayNFCData();
+     displayNFCData();  //This should clear and display scanned NFC characters
+     delay (3000); //testing to see if NFC characteres displayed
+
+    myDFPlayer.volume(10); //Set volume to 30 if NFC not scanned
+    myDFPlayer.loop(1); //Loop the first mp3
    } 
    else {
      Serial.printf("Block %d read failure!\n", READ_BLOCK_NO);
