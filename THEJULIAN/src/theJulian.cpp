@@ -151,11 +151,10 @@ void setup() {
 void loop() {
   MQTT_connect();
   MQTT_ping();
-  unsigned long currentTime = millis();
+  
   movementPixel=(hu.smHumanData(hu.eHumanMovingRange));  //Movement parameter 0-100
-     //if (movementPixel !=movementPixel)
-     // Map movement parameter (0–100) to NeoPixel index range (2–15)
   pixelNumber = map(movementPixel, 0, 100, 0, PIXELCOUNT - 1);  //Since we start at pixel 0, we subtract 1 to get 16 total
+  unsigned long currentTime = millis();
 
   //Update NeoPixels
   pixel.clear();  // Clear all pixels first
@@ -185,10 +184,10 @@ void loop() {
     }
 }
 
-  //Update OLED every 500ms
+  //Update OLED every 50ms
   static unsigned long lastSecond = 0; 
     //currentTime=millis(); //put this above already
-  if ((currentTime-lastSecond)>500) { //half second
+  if ((currentTime-lastSecond)>50) { 
     lastSecond=currentTime;
 // Set OLED text size and color
   display.clearDisplay();
@@ -263,13 +262,15 @@ void loop() {
 //movementPixel=map((hu.smHumanData(hu.eHumanMovingRange)),0,100,0,10);
 //movementPixel=(1/10)*(hu.smHumanData(hu.eHumanMovingRange));
 void PixelFill (int startP, int endP, int color) {  //make general for the function
-  //for (int pixelNumber=startP; pixelNumber<=endP; pixelNumber++) { 
+  //Ensure endP does not exceed PIXELCOUNT -1
+  endP = constrain(endP,0,PIXELCOUNT -1);
+  
+  //Light pixels from start and end points
   for (int movementPixel=startP; movementPixel<=endP; movementPixel++) {
-  //pixel.setPixelColor (pixelNumber, rainbow[pixelNumber%7]); //Moving through the array of 7 and then starting over at the first color
-  pixel.setPixelColor (movementPixel, rainbow[movementPixel%7]);  //Use rainbow colors
+  pixel.setPixelColor (movementPixel, rainbow[movementPixel%7]);  //Use rainbow colors Moving through the array of 7 and then starting over at the first color
     }
   pixel.show(); //Update NeoPixels immediately after setting color
-  }
+}
 
 
 void displayNFCData() {
