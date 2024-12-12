@@ -145,14 +145,68 @@ void setup() {
     default:
       Serial.printf("Read error\n");
   }
-
  Serial.printf("---------------\n");
 }
 
 void loop() {
   MQTT_connect();
   MQTT_ping();
+  unsigned long currentTime = millis();
+  movementPixel=(hu.smHumanData(hu.eHumanMovingRange));  //Movement parameter 0-100
+     //if (movementPixel !=movementPixel)
+     // Map movement parameter (0–100) to NeoPixel index range (2–15)
+  pixelNumber = map(movementPixel, 0, 100, 0, PIXELCOUNT - 1);  //Since we start at pixel 0, we subtract 1 to get 16 total
 
+  //Update NeoPixels
+  pixel.clear();  // Clear all pixels first
+  PixelFill(0,movementPixel,color); //Fill pixels based on movement parameter
+  
+  
+   //NFC scan with non-blocking timing
+   static unsigned long lastNfcScanTime = 0;
+    if (currentTime - lastNfcScanTime >= 100) { // 100ms delay between scans to reduce power consumption
+    lastNfcScanTime = currentTime;
+   
+   if (nfc.scan()) {
+    nfcScanned = true; // Set NFC scan flag
+    if (nfc.readData(dataRead, READ_BLOCK_NO) == 1) {
+        Serial.printf("Block %d read success!\n", READ_BLOCK_NO);
+        Serial.printf("Data read (string): %s\n", (char *)dataRead);
+        displayNFCData(); // Display scanned NFC data
+        myDFPlayer.volume(10); // Set volume
+        myDFPlayer.loop(1); // Loop the first mp3
+    } else {
+        Serial.printf("Block %d read failure!\n", READ_BLOCK_NO); // Print only if read attempt fails
+    }
+} else {
+    if (nfcScanned) { 
+        // Only print failure if we attempted a scan
+        Serial.printf("Block %d read failure!\n", READ_BLOCK_NO);
+    }
+}
+
+  //Update OLED every 500ms
+  static unsigned long lastSecond = 0; 
+    //currentTime=millis(); //put this above already
+  if ((currentTime-lastSecond)>500) { //half second
+    lastSecond=currentTime;
+// Set OLED text size and color
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(0,0);
+  //display.setRotation(3);
+  display.printf("Movement: %i\n Respiratory rate: %i\n Heart Rate: %i\n",(hu.smHumanData(hu.eHumanMovingRange)),(hu.getBreatheValue()),(hu.getHeartRate()));
+  display.display();
+  }
+
+  //Publish MQTT every ten seconds
+  static unsigned long lastTime = 0;
+  if (currentTime - lastTime > 10000) {  //Need to not overload Adafruit Dashboard
+  mmwave.publish((hu.smHumanData(hu.eHumanMovingRange))); //excluding time between pulses to simplify
+  lastTime = currentTime; // updated LastTime after publishing to Adafruit
+    }
+  }
 
   Serial.printf("Existing information:");
   switch (hu.smHumanData(hu.eHumanPresence)) {
@@ -185,6 +239,7 @@ void loop() {
   Serial.printf("Body movement parameters: %i\n Respiration rate: %i\n Heart rate: %i\n",(hu.smHumanData(hu.eHumanMovingRange)),(hu.getBreatheValue()),(hu.getHeartRate()));
   Serial.printf("-----------------------");
   //delay(1000);
+    
 
     // uint8_t readBuf[15];
     // uint8_t data = 0x0f;
@@ -202,60 +257,7 @@ void loop() {
 //  if (result.wakeupReason() == SystemSleepWakeupReason::BY_GPIO) {
 //   Serial.printf("Presence Detected  %i\n", result.wakeupPin());
 //  }
-     
-  movementPixel=(hu.smHumanData(hu.eHumanMovingRange));  //Movement parameter 0-100
-     //if (movementPixel !=movementPixel)
-     // Map movement parameter (0–100) to NeoPixel index range (2–15)
-    pixelNumber = map(movementPixel, 0, 100, 2, PIXELCOUNT - 1);  //Since we start at pixel 0, we subtract 1 to get 16 total
 
- 
-    pixel.clear();  // Clear all pixels first
-    pixel.show();
-    PixelFill(0,movementPixel,color);
-    
-   static unsigned long lastNfcScanTime = 0;
-   unsigned long currentTime = millis();
-
-   if (currentTime - lastNfcScanTime >= 100) { // 100ms delay between scans to reduce power consumption
-    lastNfcScanTime = currentTime;
-   
-   if (nfc.scan()) {
-    nfcScanned = true; // Set NFC scan flag
-    if (nfc.readData(dataRead, READ_BLOCK_NO) == 1) {
-        Serial.printf("Block %d read success!\n", READ_BLOCK_NO);
-        Serial.printf("Data read (string): %s\n", (char *)dataRead);
-        displayNFCData(); // Display scanned NFC data
-        myDFPlayer.volume(10); // Set volume
-        myDFPlayer.loop(1); // Loop the first mp3
-    } else {
-        Serial.printf("Block %d read failure!\n", READ_BLOCK_NO); // Print only if read attempt fails
-    }
-} else {
-    if (nfcScanned) { 
-        // Only print failure if we attempted a scan
-        Serial.printf("Block %d read failure!\n", READ_BLOCK_NO);
-    }
-}
-
-    currentTime=millis();
-  if ((currentTime-lastSecond)>500) { //half second
-    lastSecond=millis ();
-// Set OLED text size and color
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-  display.setCursor(0,0);
-  //display.setRotation(3);
-  display.printf("Movement: %i\n Respiratory rate: %i\n Heart Rate: %i\n",(hu.smHumanData(hu.eHumanMovingRange)),(hu.getBreatheValue()),(hu.getHeartRate()));
-  display.display();
-  }
-
-if((millis() - lastTime > 1000)) {  //Need to not overload Adafruit Dashboard
-    mmwave.publish((hu.smHumanData(hu.eHumanMovingRange))); //excluding time between pulses to simplify
-   // Serial.printf("Published movement: %0.1f RPM\n", RPMCalc);
-}
-    lastTime = millis(); // updated LastTime after publishing to Adafruit
-  }
 }
 
 //movementPixel=map((hu.smHumanData(hu.eHumanMovingRange)),0,100,0,10);
@@ -264,10 +266,9 @@ void PixelFill (int startP, int endP, int color) {  //make general for the funct
   //for (int pixelNumber=startP; pixelNumber<=endP; pixelNumber++) { 
   for (int movementPixel=startP; movementPixel<=endP; movementPixel++) {
   //pixel.setPixelColor (pixelNumber, rainbow[pixelNumber%7]); //Moving through the array of 7 and then starting over at the first color
-  pixel.setPixelColor (movementPixel, rainbow[movementPixel%7]);
-   }
-  //pixel.clear();
-  pixel.show();
+  pixel.setPixelColor (movementPixel, rainbow[movementPixel%7]);  //Use rainbow colors
+    }
+  pixel.show(); //Update NeoPixels immediately after setting color
   }
 
 
