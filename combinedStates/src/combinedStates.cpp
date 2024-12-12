@@ -104,107 +104,107 @@ void setup() {
 }
 
 void loop() {
-    unsigned long currentTime = millis();
+    MQTT_connect();
+    MQTT_ping();
 
-    // Handle NFC scanning for mode change
+    // Existing information
+    Serial.printf("Existing information:");
+    switch (hu.smHumanData(hu.eHumanPresence)) {
+        case 0:
+            Serial.printf("No one is present\n");
+            break;
+        case 1:
+            Serial.printf("Someone is present\n");
+            break;
+        default:
+            Serial.printf("Read error\n");
+    }
+
+    // Motion information
+    Serial.printf("Motion information:");
+    switch (hu.smHumanData(hu.eHumanMovement)) {
+        case 0:
+            Serial.printf("None\n");
+            break;
+        case 1:
+            Serial.printf("Still\n");
+            break;
+        case 2:
+            Serial.printf("Active\n");
+            break;
+        default:
+            Serial.printf("Read error\n");
+    }
+
+    // Body movement parameters
+    Serial.printf("Body movement parameters: %i\n", hu.smHumanData(hu.eHumanMovingRange));
+    Serial.printf("Respiration rate: %i\n", hu.getBreatheValue());
+    Serial.printf("Heart rate: %i\n", hu.getHeartRate());
+    Serial.printf("-----------------------\n");
+
+    // Update NeoPixels
+    movementPixel = hu.smHumanData(hu.eHumanMovingRange);
+    int pixelNumber = map(movementPixel, 0, 100, 0, PIXELCOUNT - 1);
+    pixel.clear();
+    PixelFill(0, pixelNumber, color);
+
+    // NFC scan with non-blocking timing
+    static unsigned long lastNfcScanTime = 0;
+    unsigned long currentTime = millis();
     if (currentTime - lastNfcScanTime >= 100) { // Check NFC every 100ms
         lastNfcScanTime = currentTime;
 
         if (nfc.scan()) {
+            nfcScanned = true; // Set NFC scan flag
             if (nfc.readData(dataRead, READ_BLOCK_NO) == 1) {
-                Serial.printf("NFC Data: %s\n", (char *)dataRead);
-
-                if (strcmp((char *)dataRead, "SLEEP") == 0) {
-                    saveState(SLEEP_MODE);
-                    System.reset(); // Reset device to apply changes
-                } else if (strcmp((char *)dataRead, "FALL") == 0) {
-                    saveState(FALL_MODE);
-                    System.reset(); // Reset device to apply changes
-                }
+                Serial.printf("Block %d read success!\n", READ_BLOCK_NO);
+                Serial.printf("Data read (string): %s\n", (char *)dataRead);
+                displayNFCData(); // Display scanned NFC data
+                myDFPlayer.volume(10); // Set volume
+                myDFPlayer.loop(1); // Loop the first mp3
+            } else {
+                Serial.printf("Block %d read failure!\n", READ_BLOCK_NO);
+            }
+        } else {
+            if (nfcScanned) {
+                Serial.printf("Block %d read failure!\n", READ_BLOCK_NO);
             }
         }
     }
 
-    // Update NeoPixels based on motion parameters even in fall detection mode
-    movementPixel = hu.smHumanData(hu.eHumanMovingRange);
-    
-    // Map movement parameter (0–100) to NeoPixel index range (2–15)
-    int pixelNumber = map(movementPixel, 0, 100, 0, PIXELCOUNT - 1);
-
-    pixel.clear(); // Clear all pixels first
-    PixelFill(0, pixelNumber, color);
-
     // Update OLED every half second
+    static unsigned long lastSecond = 0;
     if ((currentTime - lastSecond) > 500) {
         lastSecond = currentTime;
         display.clearDisplay();
         display.setTextSize(1);
         display.setTextColor(WHITE);
         display.setCursor(0, 0);
-        display.printf("Movement: %i\nRespiratory rate: %i\nHeart Rate: %i\n",
-                       hu.smHumanData(hu.eHumanMovingRange),
-                       hu.getBreatheValue(),
-                       hu.getHeartRate());
+        display.printf(
+            "Movement: %i\nRespiratory rate: %i\nHeart Rate: %i\n",
+            hu.smHumanData(hu.eHumanMovingRange),
+            hu.getBreatheValue(),
+            hu.getHeartRate()
+        );
         display.display();
-        
-        // Display fall status and stationary dwell status
-        Serial.print("Fall status: ");
-        switch (hu.getFallData(hu.eFallState)) {
-            case 0:
-                Serial.println("Not fallen");
-                break;
-            case 1:
-                Serial.println("Fallen");
-                break;
-            default:
-                Serial.println("Read error");
-        }
-        
-        Serial.print("Stationary dwell status: ");
-        switch (hu.getFallData(hu.estaticResidencyState)) {
-            case 0:
-                Serial.println("No stationary dwell");
-                break;
-            case 1:
-                Serial.println("Stationary dwell present");
-                break;
-            default:
-                Serial.println("Read error");
-        }
-        
-        Serial.println("===============================");
     }
 
-    // Publish MQTT data every ten second
-    if ((currentTime - lastTime) > 10000) {
-        mmwave.publish(hu.smHumanData(hu.eHumanMovingRange));
+    // Publish MQTT data every second
+    static unsigned long lastTime = 0;
+    if ((currentTime - lastTime > 1000)) {
+        mmwave.publish((hu.smHumanData(hu.eHumanMovingRange)));
         lastTime = currentTime;
     }
 }
 
-void saveState(SensorState state) {
-    EEPROM.write(STATE_ADDRESS, state);
-}
-
-SensorState loadState() {
-    uint8_t storedValue = EEPROM.read(STATE_ADDRESS);  
-    SensorState state = static_cast<SensorState>(storedValue); 
-
-    if (state != SLEEP_MODE && state != FALL_MODE) { 
-        state = SLEEP_MODE; 
-    }
-
-    return state;
-}
-
 void PixelFill(int startP, int endP, int color) {
-    endP = constrain(endP, 0, PIXELCOUNT - 1);
+    endP = constrain(endP, 0, PIXELCOUNT - 1); // Ensure endP does not exceed PIXELCOUNT - 1
 
-    for (int i = startP; i <= endP; i++) {
-        pixel.setPixelColor(i, rainbow[i % 7]);
+    for (int movementPixel = startP; movementPixel <= endP; movementPixel++) {
+        pixel.setPixelColor(movementPixel, rainbow[movementPixel % 7]); // Use rainbow colors
     }
     
-    pixel.show();
+    pixel.show(); // Update NeoPixels immediately after setting color
 }
 
 void displayNFCData() {
@@ -222,22 +222,28 @@ void MQTT_connect() {
        return;
    }
 
-   while ((ret = mqtt.connect()) != 0) {
+   Serial.printf("Connecting to MQTT... ");
+   while ((ret = mqtt.connect()) != 0) { // connect will return 0 for connected
+       Serial.printf("Error Code %s\n", mqtt.connectErrorString(ret));
+       Serial.printf("Retrying MQTT connection in 5 seconds...\n");
        mqtt.disconnect();
-       delay(5000); 
+       delay(5000); // Wait 5 seconds and try again
    }
+   Serial.printf("MQTT Connected!\n");
 }
 
 bool MQTT_ping() {
-   static unsigned int lastPing;
+   static unsigned int last;
    bool pingStatus;
 
-   if ((millis() - lastPing) > 120000) { 
+   if ((millis() - last) > 120000) { 
+       Serial.printf("Pinging MQTT \n");
        pingStatus = mqtt.ping();
        if (!pingStatus) { 
+           Serial.printf("Disconnecting \n");
            mqtt.disconnect();
        }
-       lastPing = millis();
+       last = millis();
    }
    
    return pingStatus;
