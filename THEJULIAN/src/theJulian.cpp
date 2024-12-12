@@ -203,10 +203,15 @@ void loop() {
 //   Serial.printf("Presence Detected  %i\n", result.wakeupPin());
 //  }
      
-  movementPixel=(hu.smHumanData(hu.eHumanMovingRange));
+  movementPixel=(hu.smHumanData(hu.eHumanMovingRange));  //Movement parameter 0-100
      //if (movementPixel !=movementPixel)
-     pixel.clear();
-     PixelFill(0,movementPixel,color);
+     // Map movement parameter (0–100) to NeoPixel index range (2–15)
+    pixelNumber = map(movementPixel, 0, 100, 2, PIXELCOUNT - 1);  //Since we start at pixel 0, we subtract 1 to get 16 total
+
+ 
+    pixel.clear();  // Clear all pixels first
+    pixel.show();
+    PixelFill(0,movementPixel,color);
     
    static unsigned long lastNfcScanTime = 0;
    unsigned long currentTime = millis();
