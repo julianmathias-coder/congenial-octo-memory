@@ -1,5 +1,4 @@
 #include "Particle.h"
-#include "IoTClassroom_CNM.h"
 #include "DFRobot_HumanDetection.h"
 #include <Adafruit_MQTT.h>
 #include "Adafruit_MQTT/Adafruit_MQTT_SPARK.h"
@@ -76,6 +75,14 @@ void setup() {
         case FALL_MODE:
             hu.configWorkMode(hu.eFallingMode);
             Serial.println("Initialized in Fall Detection Mode");
+            // Configure fall detection parameters
+            hu.configLEDLight(hu.eFALLLed, 1);         
+            hu.configLEDLight(hu.eHPLed, 1);           
+            hu.dmInstallHeight(270);                   
+            hu.dmFallTime(5);                          
+            hu.dmUnmannedTime(1);                      
+            hu.dmFallConfig(hu.eResidenceTime, 200);   
+            hu.dmFallConfig(hu.eFallSensitivityC, 3);  
             break;
     }
 
@@ -137,14 +144,40 @@ void loop() {
                        hu.getBreatheValue(),
                        hu.getHeartRate());
         display.display();
+        
+        // Display fall status and stationary dwell status
+        Serial.print("Fall status: ");
+        switch (hu.getFallData(hu.eFallState)) {
+            case 0:
+                Serial.println("Not fallen");
+                break;
+            case 1:
+                Serial.println("Fallen");
+                break;
+            default:
+                Serial.println("Read error");
+        }
+        
+        Serial.print("Stationary dwell status: ");
+        switch (hu.getFallData(hu.estaticResidencyState)) {
+            case 0:
+                Serial.println("No stationary dwell");
+                break;
+            case 1:
+                Serial.println("Stationary dwell present");
+                break;
+            default:
+                Serial.println("Read error");
+        }
+        
+        Serial.println("===============================");
     }
 
-    // Publish MQTT data every ten second
-    if ((currentTime - lastTime) > 10000) {
+    // Publish MQTT data every second
+    if ((currentTime - lastTime) > 1000) {
         mmwave.publish(hu.smHumanData(hu.eHumanMovingRange));
         lastTime = currentTime;
     }
-
 }
 
 void saveState(SensorState state) {
