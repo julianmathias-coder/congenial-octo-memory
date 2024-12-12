@@ -121,7 +121,7 @@ void loop() {
     movementPixel = hu.smHumanData(hu.eHumanMovingRange);
 
     // Map movement parameter (0–100) to NeoPixel index range (2–15)
-    int pixelNumber = map(movementPixel, 0, 100, 0, PIXELCOUNT - 1);
+    int pixelNumber = map(movementPixel, 0, 100, 2, PIXELCOUNT - 1);
 
     pixel.clear(); // Clear all pixels first
     PixelFill(0, pixelNumber, color);
@@ -133,39 +133,47 @@ void loop() {
         display.setTextSize(1);
         display.setTextColor(WHITE);
         display.setCursor(0, 0);
-        display.printf("Movement: %i\nRespiratory rate: %i\nHeart Rate: %i\n",hu.smHumanData(hu.eHumanMovingRange),(hu.getBreatheValue()),(hu.getHeartRate()));
+
+        if (currentState == FALL_MODE) {
+            // Display fall detection information on OLED
+            display.printf("Fall Status: ");
+            switch (hu.getFallData(hu.eFallState)) {
+                case 0:
+                    display.printf("Not fallen\n");
+                    break;
+                case 1:
+                    display.printf("Fallen\n");
+                    break;
+                default:
+                    display.printf("Read error\n");
+            }
+
+            display.printf("Dwell Status: ");
+            switch (hu.getFallData(hu.estaticResidencyState)) {
+                case 0:
+                    display.printf("No dwell\n");
+                    break;
+                case 1:
+                    display.printf("Dwell present\n");
+                    break;
+                default:
+                    display.printf("Read error\n");
+            }
+        } else {
+            // Display standard information when not in fall detection mode
+            display.printf("Movement: %i\nRespiratory rate: %i\nHeart Rate: %i\n",
+                           hu.smHumanData(hu.eHumanMovingRange),
+                           hu.getBreatheValue(),
+                           hu.getHeartRate());
+        }
+
         display.display();
-        
-        // Display fall status and stationary dwell status
-        Serial.printf("Fall status: ");
-        switch (hu.getFallData(hu.eFallState)) {
-            case 0:
-                Serial.printf("Not fallen\n");
-                break;
-            case 1:
-                Serial.printf("Fallen\n");
-                break;
-            default:
-                Serial.printf("Read error\n");
-        }
-        
-        Serial.printf("Stationary dwell status: ");
-        switch (hu.getFallData(hu.estaticResidencyState)) {
-            case 0:
-                Serial.printf("No stationary dwell\n");
-                break;
-            case 1:
-                Serial.printf("Stationary dwell present\n");
-                break;
-            default:
-                Serial.printf("Read error\n");
-        }
         
         Serial.printf("===============================\n");
     }
 
-    // Publish MQTT data every ten second
-    if ((currentTime - lastTime) > 10000) {
+    // Publish MQTT data every second
+    if ((currentTime - lastTime) > 1000) {
         mmwave.publish(hu.smHumanData(hu.eHumanMovingRange));
         lastTime = currentTime;
     }
