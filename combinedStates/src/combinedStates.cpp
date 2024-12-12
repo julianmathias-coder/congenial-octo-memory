@@ -9,6 +9,15 @@
 #include "DFRobotDFPlayerMini.h"
 #include "credentials.h"
 
+// Conditional compilation to prevent redefinition
+#ifndef strncasecmp_P
+#define strncasecmp_P(s1, s2, n) strncasecmp((s1), (s2), (n))
+#endif
+
+#ifndef strncpy_P
+#define strncpy_P(s1, s2, n) strncpy((s1), (s2), (n))
+#endif
+
 // Define constants
 #define STATE_ADDRESS 0x00
 #define PN532_IRQ 2
@@ -20,7 +29,7 @@
 DFRobot_HumanDetection hu(&Serial3);
 DFRobot_PN532_IIC nfc(PN532_IRQ, POLLING);
 Adafruit_NeoPixel pixel(PIXELCOUNT, SPI1, WS2812B);
-Adafruit_SSD1306 display(-1);
+Adafruit_SSD1306 display;
 DFRobotDFPlayerMini myDFPlayer;
 TCPClient TheClient;
 Adafruit_MQTT_SPARK mqtt(&TheClient, AIO_SERVER, AIO_SERVERPORT, AIO_USERNAME, AIO_KEY);
@@ -41,7 +50,7 @@ int color;
 void saveState(SensorState state);
 SensorState loadState();
 void configureFallDetection(); // Forward declaration for configureFallDetection
-void PixelFill(int startP, int endP, int color);
+void PixelFill(int startP, int endP, int color); // Forward declaration for PixelFill
 void displayNFCData();
 void MQTT_connect();
 bool MQTT_ping();
@@ -49,8 +58,10 @@ bool MQTT_ping();
 SYSTEM_MODE(AUTOMATIC);
 
 void setup() {
-    Serial.begin(9600);
-    waitFor(Serial.isConnected, 10000);
+    Serial.begin(9600); // Start serial communication
+    waitFor(Serial.isConnected, 10000); // Wait for serial connection
+    Serial.printf("Starting setup...\n");
+
     Serial1.begin(9200);
     Serial3.begin(115200);
 
@@ -59,46 +70,64 @@ void setup() {
         Serial.printf("NFC initialization failed. Retrying...\n");
         delay(1000);
     }
+    Serial.printf("NFC initialized successfully.\n");
 
-    // Load saved mode from EEPROM and initialize mmWave sensor
-    currentState = loadState();
+    // Initialize OLED display
+    display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+    display.display(); // Show splash screen
+    delay(2000);
+    display.clearDisplay(); // Clear screen and buffer
 
-    if (hu.begin() != 0) {
-        Serial.printf("mmWave initialization failed!\n");
-        while (true); // Halt execution if initialization fails
-    }
-
-    // Default to Sleep Mode unless NFC changes it
-    if (currentState == SLEEP_MODE) {
-        hu.configWorkMode(hu.eSleepMode);
-        Serial.printf("Initialized in Sleep Mode\n");
-    } else if (currentState == FALL_MODE) {
-        hu.configWorkMode(hu.eFallingMode);
-        configureFallDetection();
-        Serial.printf("Initialized in Fall Detection Mode\n");
-    }
-
-    hu.sensorRet(); // Reset sensor after configuration
-
-    // Initialize other components
+    // Initialize NeoPixels
     pixel.begin();
     pixel.setBrightness(255);
     pixel.show(); // Turn off all pixels initially
 
-    display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
-    display.clearDisplay();
-
+    // Connect to WiFi
     WiFi.on();
     WiFi.connect();
     while (WiFi.connecting()) {
         Serial.printf(".");
+        delay(500);
     }
+    Serial.printf("\nWiFi connected.\n");
+
+    // Initialize mmWave sensor
+    Serial.printf("Initializing mmWave sensor...\n");
+    while (hu.begin() != 0) {
+        Serial.printf("mmWave initialization failed. Retrying...\n");
+        delay(1000);
+    }
+    Serial.printf("mmWave sensor initialized successfully.\n");
+
+    // Load saved mode from EEPROM
+    SensorState currentState = loadState();
+    Serial.printf("Loaded state: %d\n", currentState);
+
+    // Default to Sleep Mode unless NFC changes it
+    if (currentState == SLEEP_MODE || currentState != FALL_MODE) {
+        hu.configWorkMode(hu.eSleepMode);
+        saveState(SLEEP_MODE); // Save default state
+        Serial.printf("Initialized in Sleep Mode.\n");
+    } else if (currentState == FALL_MODE) {
+        hu.configWorkMode(hu.eFallingMode);
+        configureFallDetection();
+        Serial.printf("Initialized in Fall Detection Mode.\n");
+    }
+
+    hu.sensorRet(); // Reset sensor after configuration
+
+    Serial.printf("Setup complete.\n");
 }
 
 void loop() {
     unsigned long currentTime = millis();
 
+    // Debugging: Print loop execution marker
+    Serial.printf("Loop running...\n");
+
     // Handle NFC scanning for mode change
+    static unsigned long lastNfcScanTime = 0;
     if (currentTime - lastNfcScanTime >= 100) { // Check NFC every 100ms
         lastNfcScanTime = currentTime;
 
@@ -113,29 +142,31 @@ void loop() {
                     saveState(FALL_MODE);
                     System.reset(); // Reset device to apply changes
                 }
+            } else {
+                Serial.printf("Failed to read NFC data.\n");
             }
         }
     }
 
-    // Update NeoPixels based on motion parameters even in fall detection mode
+    // Update NeoPixels based on motion parameters
     movementPixel = hu.smHumanData(hu.eHumanMovingRange);
-
-    // Map movement parameter (0–100) to NeoPixel index range (2–15)
-    int pixelNumber = map(movementPixel, 0, 100, 2, PIXELCOUNT - 1);
-
+    
+    int pixelNumber = map(movementPixel, 0, 100, 0, PIXELCOUNT - 1);
+    
     pixel.clear(); // Clear all pixels first
-    PixelFill(0, pixelNumber, color);
+    PixelFill(0, movementPixel, color);
 
     // Update OLED every half second
+    static unsigned long lastSecond = 0;
     if ((currentTime - lastSecond) > 500) {
         lastSecond = currentTime;
+
         display.clearDisplay();
         display.setTextSize(1);
         display.setTextColor(WHITE);
         display.setCursor(0, 0);
 
         if (currentState == FALL_MODE) {
-            // Display fall detection information on OLED
             display.printf("Fall Status: ");
             switch (hu.getFallData(hu.eFallState)) {
                 case 0:
@@ -160,7 +191,6 @@ void loop() {
                     display.printf("Read error\n");
             }
         } else {
-            // Display standard information when not in fall detection mode
             display.printf("Movement: %i\nRespiratory rate: %i\nHeart Rate: %i\n",
                            hu.smHumanData(hu.eHumanMovingRange),
                            hu.getBreatheValue(),
@@ -172,26 +202,28 @@ void loop() {
         Serial.printf("===============================\n");
     }
 
-    // Publish MQTT data every second
-    if ((currentTime - lastTime) > 1000) {
+    // Publish MQTT data every ten second
+    static unsigned long lastTime = 0;
+    if ((currentTime - lastTime) > 10000) {
         mmwave.publish(hu.smHumanData(hu.eHumanMovingRange));
         lastTime = currentTime;
+        Serial.printf("Published MQTT data.\n");
     }
 }
 
 void saveState(SensorState state) {
-    EEPROM.write(STATE_ADDRESS, state);
+   EEPROM.write(STATE_ADDRESS, state);
 }
 
 SensorState loadState() {
-    uint8_t storedValue = EEPROM.read(STATE_ADDRESS);  
-    SensorState state = static_cast<SensorState>(storedValue); 
+   uint8_t storedValue = EEPROM.read(STATE_ADDRESS);  
+   SensorState state = static_cast<SensorState>(storedValue); 
+   
+   if (state != SLEEP_MODE && state != FALL_MODE) { 
+       return SLEEP_MODE; 
+   }
 
-    if (state != SLEEP_MODE && state != FALL_MODE) { 
-        state = SLEEP_MODE; 
-    }
-
-    return state;
+   return state;
 }
 
 void configureFallDetection() {
@@ -204,48 +236,12 @@ void configureFallDetection() {
    hu.dmFallConfig(hu.eFallSensitivityC, 3);  
 }
 
-void PixelFill(int startP, int endP, int color) {
-    endP = constrain(endP, 0, PIXELCOUNT - 1);
+void PixelFill(int startP, int endP, int color) { 
+   endP = constrain(endP, 0, PIXELCOUNT - 1);
 
-    for (int i = startP; i <= endP; i++) {
-        pixel.setPixelColor(i, rainbow[i % 7]);
-    }
-    
-    pixel.show();
-}
-
-void displayNFCData() {
-    display.clearDisplay();
-    display.setTextSize(2);
-    display.setCursor(0, 32);
-    display.printf("%s\n", (char *)dataRead);
-    display.display();
-}
-
-void MQTT_connect() {
-   int8_t ret;
-
-   if (mqtt.connected()) {
-       return;
+   for (movementPixel= startP; movementPixel<= endP; movementPixel++) { 
+       pixel.setPixelColor(movementPixel, rainbow[%7]); 
    }
 
-   while ((ret = mqtt.connect()) != 0) { 
-       mqtt.disconnect();
-       delay(5000); 
-   }
-}
-
-bool MQTT_ping() {
-   static unsigned int lastPing;
-   bool pingStatus;
-
-   if ((millis() - lastPing) > 120000) { 
-       pingStatus = mqtt.ping();
-       if (!pingStatus) { 
-           mqtt.disconnect();
-       }
-       lastPing = millis();
-   }
-   
-   return pingStatus;
+   pixel.show(); 
 }
