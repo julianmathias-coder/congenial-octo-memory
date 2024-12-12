@@ -125,9 +125,11 @@ void loop() {
         }
     }
 
-    // Update NeoPixels based on movement parameter
+    // Update NeoPixels based on motion parameters even in fall detection mode
     movementPixel = hu.smHumanData(hu.eHumanMovingRange);
-    int pixelNumber = map(movementPixel, 0, 100, 2, PIXELCOUNT - 1);
+    
+    // Map movement parameter (0–100) to NeoPixel index range (2–15)
+    int pixelNumber = map(movementPixel, 0, 100, 0, PIXELCOUNT - 1);
 
     pixel.clear(); // Clear all pixels first
     PixelFill(0, pixelNumber, color);
@@ -173,8 +175,8 @@ void loop() {
         Serial.println("===============================");
     }
 
-    // Publish MQTT data every second
-    if ((currentTime - lastTime) > 1000) {
+    // Publish MQTT data every ten second
+    if ((currentTime - lastTime) > 10000) {
         mmwave.publish(hu.smHumanData(hu.eHumanMovingRange));
         lastTime = currentTime;
     }
