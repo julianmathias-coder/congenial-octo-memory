@@ -1,7 +1,12 @@
 # "PixelAuraEcho" Human Monitoring and Fall Detection
 **IoT project to improve safety**
 
-![Alt text](https://github.com/julianmathias-coder/Terrain-Terrain-Stand-Up-/blob/main/IMG_2999.png?raw=true)
+![Alt text](https://github.com/julianmathias-coder/congenial-octo-memory/blob/7504f8366ba6862ee954c906a89b2b34bd08b30f/THEJULIAN/DSC02121.JPG)
+![Alt text](https://github.com/julianmathias-coder/congenial-octo-memory/blob/7504f8366ba6862ee954c906a89b2b34bd08b30f/THEJULIAN/IMG_3195.JPG)
+![Alt text](https://github.com/julianmathias-coder/congenial-octo-memory/blob/7504f8366ba6862ee954c906a89b2b34bd08b30f/THEJULIAN/IMG_3195.JPG)
+![Alt text](https://github.com/julianmathias-coder/congenial-octo-memory/blob/7504f8366ba6862ee954c906a89b2b34bd08b30f/THEJULIAN/DSC02135.JPG)
+
+
 
 ## This Project:
 
