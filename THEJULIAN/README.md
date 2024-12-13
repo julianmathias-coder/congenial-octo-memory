@@ -3,7 +3,6 @@
 
 ![Alt text](https://github.com/julianmathias-coder/congenial-octo-memory/blob/7504f8366ba6862ee954c906a89b2b34bd08b30f/THEJULIAN/DSC02121.JPG)
 ![Alt text](https://github.com/julianmathias-coder/congenial-octo-memory/blob/7504f8366ba6862ee954c906a89b2b34bd08b30f/THEJULIAN/IMG_3195.JPG)
-![Alt text](https://github.com/julianmathias-coder/congenial-octo-memory/blob/7504f8366ba6862ee954c906a89b2b34bd08b30f/THEJULIAN/IMG_3195.JPG)
 ![Alt text](https://github.com/julianmathias-coder/congenial-octo-memory/blob/7504f8366ba6862ee954c906a89b2b34bd08b30f/THEJULIAN/DSC02135.JPG)
 
 
